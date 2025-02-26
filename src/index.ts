@@ -11,7 +11,7 @@ const app = new Hono<{
 app.use(
 	"*",
 	cors({
-		origin: "http://localhost:3001", // Replace with your frontend URL
+		origin: "http://localhost:3000", // Replace with your frontend URL
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "OPTIONS"],
 		exposeHeaders: ["Content-Length"],
