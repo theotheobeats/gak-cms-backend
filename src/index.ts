@@ -10,7 +10,7 @@ const app = new Hono<{
 
 app.use(
 	cors({
-		origin: "http://localhost:3000", // Must be specific, not "*"
+		origin: "http://localhost:3000", 
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "OPTIONS"],
 		exposeHeaders: ["Content-Length"],
@@ -43,7 +43,6 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.get("/", (c) => {
 	return c.text("Hello Hono!");
 });
-
 
 export default {
 	port: 3001,

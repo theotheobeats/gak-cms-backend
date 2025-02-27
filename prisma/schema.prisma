@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String       @id
   name          String
   email         String
   emailVerified Boolean
@@ -19,6 +18,8 @@ model User {
   updatedAt     DateTime
   sessions      Session[]
   accounts      Account[]
+  reflections   Reflection[]
+  images        Image[]
 
   @@unique([email])
   @@map("user")
@@ -67,4 +68,114 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Reflection {
+  id          String            @id
+  title       String
+  content     String            @db.Text
+  publishedAt DateTime?
+  slug        String            @unique
+  status      PublicationStatus @default(DRAFT)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations
+  authorId        String
+  author          User            @relation(fields: [authorId], references: [id])
+  featuredImageId String?
+  featuredImage   Image?          @relation("FeaturedImage", fields: [featuredImageId], references: [id])
+  tags            ReflectionTag[]
+
+  @@map("reflections")
+}
+
+model Tag {
+  id        String   @id
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reflections ReflectionTag[]
+
+  @@map("tags")
+}
+
+model ReflectionTag {
+  reflectionId String
+  reflection   Reflection @relation(fields: [reflectionId], references: [id], onDelete: Cascade)
+  tagId        String
+  tag          Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+
+  @@id([reflectionId, tagId])
+  @@map("reflection_tags")
+}
+
+model Image {
+  id        String   @id
+  url       String
+  alt       String?
+  caption   String?
+  width     Int?
+  height    Int?
+  size      Int? // File size in bytes
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  uploadedById String
+  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
+  featuredIn   Reflection[]   @relation("FeaturedImage")
+  galleries    GalleryImage[]
+
+  @@map("images")
+}
+
+model Gallery {
+  id          String   @id
+  title       String
+  description String?  @db.Text
+  slug        String   @unique
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  images GalleryImage[]
+
+  @@map("galleries")
+}
+
+model GalleryImage {
+  galleryId String
+  gallery   Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  imageId   String
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  order     Int // For ordering images in the gallery
+  addedAt   DateTime @default(now())
+
+  @@id([galleryId, imageId])
+  @@map("gallery_images")
+}
+
+model ContactSubmission {
+  id        String   @id
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String   @db.Text
+  status    String   @default("NEW") // NEW, REVIEWED, ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contact_submissions")
 }
