@@ -9,14 +9,13 @@ const app = new Hono<{
 }>();
 
 app.use(
-	"*",
 	cors({
-		origin: "http://localhost:3000", // Replace with your frontend URL
+		origin: "http://localhost:3000", // Must be specific, not "*"
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "OPTIONS"],
 		exposeHeaders: ["Content-Length"],
 		maxAge: 600,
-		credentials: true,
+		credentials: true, // Allows cookies
 	})
 );
 
@@ -44,6 +43,7 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.get("/", (c) => {
 	return c.text("Hello Hono!");
 });
+
 
 export default {
 	port: 3001,
