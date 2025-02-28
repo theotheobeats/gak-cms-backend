@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { cors } from "hono/cors";
+import { reflections } from "./api/reflections";
+
 const app = new Hono<{
 	Variables: {
 		user: typeof auth.$Infer.Session.user | null;
@@ -10,7 +12,7 @@ const app = new Hono<{
 
 app.use(
 	cors({
-		origin: "http://localhost:3000", 
+		origin: "http://localhost:3000",
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "OPTIONS"],
 		exposeHeaders: ["Content-Length"],
@@ -43,6 +45,9 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => {
 app.get("/", (c) => {
 	return c.text("Hello Hono!");
 });
+
+// API ROUTES
+app.route("/api/reflections", reflections);
 
 export default {
 	port: 3001,
