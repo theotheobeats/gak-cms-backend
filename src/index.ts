@@ -22,6 +22,10 @@ app.use(
 );
 
 // This middleware will run on every request
+app.on(["POST", "GET"], "/api/auth/*", (c) => {
+	return auth.handler(c.req.raw);
+});
+
 app.use("*", async (c, next) => {
 	const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
@@ -36,17 +40,11 @@ app.use("*", async (c, next) => {
 	return next();
 });
 
-// better-auth mounting
-app.on(["POST", "GET"], "/api/auth/*", (c) => {
-	return auth.handler(c.req.raw);
-});
-
-// ENTRY POINT
+// API ROUTES
 app.get("/", (c) => {
 	return c.text("Hello Hono!");
 });
 
-// API ROUTES
 app.route("/api/reflections", reflections);
 
 export default {

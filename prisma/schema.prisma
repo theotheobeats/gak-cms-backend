@@ -79,7 +79,7 @@ model Reflection {
   id          String            @id
   title       String
   content     String            @db.Text
-  publishedAt DateTime?
+  publishDate DateTime?
   slug        String            @unique
   status      PublicationStatus @default(DRAFT)
   createdAt   DateTime          @default(now())

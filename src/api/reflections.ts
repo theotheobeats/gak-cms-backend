@@ -20,6 +20,7 @@ const createReflectionSchema = z.object({
 	status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
 	featuredImageId: z.string().optional(),
 	tags: z.array(z.string()).optional(),
+	publishDate: z.string().optional(),
 });
 
 // Middleware to check authentication
@@ -42,6 +43,7 @@ reflections.post("/create", requireAuth, async (c) => {
 			data: {
 				id: crypto.randomUUID(),
 				...validated,
+				publishDate: validated.publishDate,
 				slug: validated.slug || createSlug(validated.title),
 				authorId: user!.id,
 				tags: validated.tags
@@ -210,6 +212,44 @@ reflections.delete("/delete/:id", requireAuth, async (c) => {
 		return c.json({ success: true }, 200);
 	} catch (error) {
 		return c.json({ error: "Failed to delete reflection" }, 400);
+	}
+});
+
+// Update Publication Status
+reflections.patch("/publish/:id", requireAuth, async (c) => {
+	try {
+		const id = c.req.param("id");
+		const user = c.get("user");
+
+		// Check if the reflection exists and belongs to the user
+		const existing = await prisma.reflection.findUnique({
+			where: { id },
+			select: { authorId: true },
+		});
+
+		if (!existing) {
+			return c.json({ error: "Reflection not found" }, 404);
+		}
+
+		if (existing.authorId !== user!.id) {
+			return c.json({ error: "Unauthorized" }, 403);
+		}
+
+		const reflection = await prisma.reflection.update({
+			where: { id },
+			data: {
+				status: "PUBLISHED",
+				publishDate: new Date(),
+			},
+			include: {
+				tags: { include: { tag: true } },
+				featuredImage: true,
+			},
+		});
+
+		return c.json(reflection);
+	} catch (error) {
+		return c.json({ error: "Failed to publish reflection" }, 400);
 	}
 });
 
