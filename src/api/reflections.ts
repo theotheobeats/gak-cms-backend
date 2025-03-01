@@ -164,6 +164,7 @@ reflections.put("/update/:id", requireAuth, async (c) => {
 			where: { id },
 			data: {
 				...validated,
+				publishDate: validated.publishDate,
 				tags: validated.tags
 					? {
 							deleteMany: {},
@@ -181,6 +182,7 @@ reflections.put("/update/:id", requireAuth, async (c) => {
 
 		return c.json(reflection);
 	} catch (error) {
+		console.error('Update error:', error);
 		return c.json({ error: "Failed to update reflection" }, 400);
 	}
 });
