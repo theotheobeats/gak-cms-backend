@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { Prisma, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "../lib/auth";
+import { storageHelpers } from "../lib/supabase";
 
 const prisma = new PrismaClient();
 const albums = new Hono<{
@@ -25,7 +26,13 @@ const createAlbumSchema = z.object({
 	),
 });
 
-const updateAlbumSchema = createAlbumSchema.partial();
+const updateAlbumSchema = z
+	.object({
+		name: z.string().min(1, "Album name is required").optional(),
+		description: z.string().optional(),
+		date: z.string().optional(),
+	})
+	.strict();
 
 // Middleware to check authentication
 const requireAuth = async (c: any, next: any) => {
@@ -56,8 +63,22 @@ const requireAuth = async (c: any, next: any) => {
 albums.post("/create", requireAuth, async (c) => {
 	try {
 		const user = c.get("user");
-		const body = await c.req.json();
-		const validated = createAlbumSchema.parse(body);
+		const formData = await c.req.formData();
+		const name = formData.get("name") as string;
+		const description = formData.get("description") as string | undefined;
+		const date = formData.get("date") as string;
+		const files = Array.from(formData.getAll("images") as File[]) || [];
+
+		const validated = createAlbumSchema.parse({
+			name,
+			description,
+			date,
+			images: files.map((file) => ({
+				file,
+				alt: file.name,
+				caption: formData.get("caption") as string | undefined,
+			})),
+		});
 
 		// 1. Create album first
 		const album = await prisma.album.create({
@@ -72,30 +93,32 @@ albums.post("/create", requireAuth, async (c) => {
 
 		// 2. Upload images to Supabase Storage and create Image records
 		const imagePromises = validated.images.map(async (imageData) => {
-			// Upload to Supabase
-			const fileName = `${album.id}/${crypto.randomUUID()}`;
-			const { data: fileData, error } = await supabase.storage
-				.from("albums")
-				.upload(fileName, imageData.file);
+			const fileId = crypto.randomUUID();
+			const fileExt = imageData.file.name.split(".").pop();
+			const filePath = `${album.id}/${fileId}.${fileExt}`;
 
-			if (error) throw error;
+			try {
+				const publicUrl = await storageHelpers.uploadFile(
+					"albums",
+					filePath,
+					imageData.file
+				);
 
-			// Get public URL
-			const {
-				data: { publicUrl },
-			} = supabase.storage.from("albums").getPublicUrl(fileName);
-
-			// Create image record in database
-			return prisma.image.create({
-				data: {
-					id: crypto.randomUUID(),
-					url: publicUrl,
-					alt: imageData.alt,
-					caption: imageData.caption,
-					albumId: album.id,
-					userId: user!.id,
-				},
-			});
+				return prisma.image.create({
+					data: {
+						id: fileId,
+						url: publicUrl,
+						alt: imageData.alt,
+						caption: imageData.caption,
+						albumId: album.id,
+						userId: user!.id,
+						size: imageData.file.size,
+					},
+				});
+			} catch (error) {
+				console.error(`Failed to upload file ${imageData.file.name}:`, error);
+				throw error;
+			}
 		});
 
 		const images = await Promise.all(imagePromises);
@@ -195,11 +218,19 @@ albums.put("/:id", requireAuth, async (c) => {
 		const album = await prisma.album.update({
 			where: { id },
 			data: {
-				...validated,
+				name: validated.name,
+				description: validated.description,
 				date: validated.date ? new Date(validated.date) : undefined,
 			},
 			include: {
 				images: true,
+				uploadedBy: {
+					select: {
+						id: true,
+						name: true,
+						image: true,
+					},
+				},
 			},
 		});
 
@@ -234,11 +265,11 @@ albums.delete("/:id", requireAuth, async (c) => {
 			return c.json({ error: "Unauthorized" }, 403);
 		}
 
-		// Delete images from Supabase Storage
+		// Delete images from storage
 		for (const image of existing.images) {
-			const fileName = image.url.split("/").pop(); // Get filename from URL
-			if (fileName) {
-				await supabase.storage.from("albums").remove([`${id}/${fileName}`]);
+			const filePath = image.url.split("/").pop();
+			if (filePath) {
+				await storageHelpers.deleteFile("albums", `${id}/${filePath}`);
 			}
 		}
 
