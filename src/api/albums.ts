@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "../lib/auth";
 import { storageHelpers } from "../lib/supabase";
@@ -13,26 +13,42 @@ const albums = new Hono<{
 }>();
 
 // Validation schemas
+interface AlbumData {
+	name: string;
+	description?: string;
+	date: string;
+	images: Array<{
+		id: string;
+		alt?: string;
+		caption?: string;
+		width?: number;
+		height?: number;
+		size?: number;
+	}>;
+}
+
 const createAlbumSchema = z.object({
 	name: z.string().min(1, "Album name is required"),
 	description: z.string().optional(),
-	date: z.string(), // Will be converted to Date
+	date: z.string(),
 	images: z.array(
 		z.object({
-			file: z.any(), // Will be handled as File in frontend
+			id: z.string(),
 			alt: z.string().optional(),
 			caption: z.string().optional(),
+			width: z.number().optional(),
+			height: z.number().optional(),
+			size: z.number().optional(),
 		})
 	),
 });
 
-const updateAlbumSchema = z
-	.object({
-		name: z.string().min(1, "Album name is required").optional(),
-		description: z.string().optional(),
-		date: z.string().optional(),
-	})
-	.strict();
+// Separate schema for updates that doesn't include images
+const updateAlbumSchema = z.object({
+	name: z.string().min(1, "Album name is required").optional(),
+	description: z.string().optional(),
+	date: z.string().optional(),
+});
 
 // Middleware to check authentication
 const requireAuth = async (c: any, next: any) => {
@@ -54,9 +70,12 @@ const requireAuth = async (c: any, next: any) => {
  *   description?: string,
  *   date: string (YYYY-MM-DD),
  *   images: Array<{
- *     file: File,
+ *     id: string,
  *     alt?: string,
- *     caption?: string
+ *     caption?: string,
+ *     width?: number,
+ *     height?: number,
+ *     size?: number
  *   }>
  * }
  */
@@ -64,23 +83,30 @@ albums.post("/create", requireAuth, async (c) => {
 	try {
 		const user = c.get("user");
 		const formData = await c.req.formData();
-		const name = formData.get("name") as string;
-		const description = formData.get("description") as string | undefined;
-		const date = formData.get("date") as string;
-		const files = Array.from(formData.getAll("images") as File[]) || [];
 
-		const validated = createAlbumSchema.parse({
-			name,
-			description,
-			date,
-			images: files.map((file) => ({
-				file,
-				alt: file.name,
-				caption: formData.get("caption") as string | undefined,
-			})),
-		});
+		// Get album data from JSON
+		const albumDataJson = formData.get("albumData");
+		if (!albumDataJson) {
+			return c.json({ error: "Album data is required" }, 400);
+		}
 
-		// 1. Create album first
+		const albumData: AlbumData = JSON.parse(albumDataJson.toString());
+		const validated = createAlbumSchema.parse(albumData);
+
+		// Get image files
+		const imageFiles: File[] = [];
+		let i = 0;
+		while (formData.has(`image_${i}`)) {
+			const file = formData.get(`image_${i}`) as File;
+			imageFiles.push(file);
+			i++;
+		}
+
+		if (imageFiles.length === 0) {
+			return c.json({ error: "At least one image is required" }, 400);
+		}
+
+		// Create album
 		const album = await prisma.album.create({
 			data: {
 				id: crypto.randomUUID(),
@@ -91,32 +117,35 @@ albums.post("/create", requireAuth, async (c) => {
 			},
 		});
 
-		// 2. Upload images to Supabase Storage and create Image records
-		const imagePromises = validated.images.map(async (imageData) => {
-			const fileId = crypto.randomUUID();
-			const fileExt = imageData.file.name.split(".").pop();
-			const filePath = `${album.id}/${fileId}.${fileExt}`;
+		// Upload images and create records
+		const imagePromises = imageFiles.map(async (file, index) => {
+			// Always generate a new UUID for the database record
+			const dbImageId = crypto.randomUUID();
+			const fileExt = file.name.split(".").pop();
+			const filePath = `${album.id}/${dbImageId}.${fileExt}`;
 
 			try {
 				const publicUrl = await storageHelpers.uploadFile(
 					"albums",
 					filePath,
-					imageData.file
+					file
 				);
 
 				return prisma.image.create({
 					data: {
-						id: fileId,
+						id: dbImageId, // Use the new UUID
 						url: publicUrl,
-						alt: imageData.alt,
-						caption: imageData.caption,
+						alt: validated.images[index].alt || file.name,
+						caption: validated.images[index].caption,
+						width: validated.images[index].width,
+						height: validated.images[index].height,
+						size: validated.images[index].size || file.size,
 						albumId: album.id,
 						userId: user!.id,
-						size: imageData.file.size,
 					},
 				});
 			} catch (error) {
-				console.error(`Failed to upload file ${imageData.file.name}:`, error);
+				console.error(`Failed to upload file ${file.name}:`, error);
 				throw error;
 			}
 		});
@@ -126,6 +155,15 @@ albums.post("/create", requireAuth, async (c) => {
 		return c.json({ ...album, images }, 201);
 	} catch (error) {
 		console.error("Album creation error:", error);
+		if (error instanceof z.ZodError) {
+			return c.json(
+				{
+					error: "Validation error",
+					details: error.errors,
+				},
+				400
+			);
+		}
 		return c.json({ error: "Failed to create album" }, 400);
 	}
 });
@@ -215,22 +253,18 @@ albums.put("/:id", requireAuth, async (c) => {
 
 		const validated = updateAlbumSchema.parse(body);
 
+		// Only include defined fields in the update
+		const updateData: Prisma.AlbumUpdateInput = {
+			...(validated.name && { name: validated.name }),
+			...(validated.description && { description: validated.description }),
+			...(validated.date && { date: new Date(validated.date) }),
+		};
+
 		const album = await prisma.album.update({
 			where: { id },
-			data: {
-				name: validated.name,
-				description: validated.description,
-				date: validated.date ? new Date(validated.date) : undefined,
-			},
+			data: updateData,
 			include: {
 				images: true,
-				uploadedBy: {
-					select: {
-						id: true,
-						name: true,
-						image: true,
-					},
-				},
 			},
 		});
 
