@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { cors } from "hono/cors";
 import { reflections } from "./api/reflections";
+import { albums } from "./api/albums";
 
 const app = new Hono<{
 	Variables: {
@@ -46,6 +47,7 @@ app.get("/", (c) => {
 });
 
 app.route("/api/reflections", reflections);
+app.route("/api/albums", albums);
 
 export default {
 	port: 3001,

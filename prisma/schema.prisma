@@ -20,6 +20,7 @@ model User {
   accounts      Account[]
   reflections   Reflection[]
   images        Image[]
+  Album         Album[]
 
   @@unique([email])
   @@map("user")
@@ -119,6 +120,22 @@ model ReflectionTag {
   @@map("reflection_tags")
 }
 
+model Album {
+  id          String   @id
+  name        String
+  description String?  @db.Text
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  uploadedById String
+  uploadedBy   User    @relation(fields: [uploadedById], references: [id])
+  images       Image[] // One-to-many relationship with images
+
+  @@map("albums")
+}
+
 model Image {
   id        String   @id
   url       String
@@ -131,39 +148,15 @@ model Image {
   updatedAt DateTime @updatedAt
 
   // Relations
-  uploadedById String
-  uploadedBy   User           @relation(fields: [uploadedById], references: [id])
-  featuredIn   Reflection[]   @relation("FeaturedImage")
-  galleries    GalleryImage[]
+  albumId String // Each image belongs to one album
+  album   Album  @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  // Optional: Keep the relation to reflections if you still want to use images in reflections
+  featuredIn Reflection[] @relation("FeaturedImage")
+  User       User?        @relation(fields: [userId], references: [id])
+  userId     String?
 
   @@map("images")
-}
-
-model Gallery {
-  id          String   @id
-  title       String
-  description String?  @db.Text
-  slug        String   @unique
-  isPublished Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  images GalleryImage[]
-
-  @@map("galleries")
-}
-
-model GalleryImage {
-  galleryId String
-  gallery   Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
-  imageId   String
-  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  order     Int // For ordering images in the gallery
-  addedAt   DateTime @default(now())
-
-  @@id([galleryId, imageId])
-  @@map("gallery_images")
 }
 
 model ContactSubmission {
