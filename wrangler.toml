@@ -6,7 +6,7 @@ compatibility_date = "2024-03-05"
 DATABASE_URL = { type = "secret" }
 
 [build]
-command = "bun install && bunx prisma generate && bun build ./src/index.ts --target=browser --format=esm --outdir dist"
+command = "rm -f bun.lockb && bun install && bunx prisma generate && bun build ./src/index.ts --target=browser --format=esm --outdir dist"
 
 [build.upload]
 format = "service-worker"
