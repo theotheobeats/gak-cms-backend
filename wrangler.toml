@@ -1,6 +1,9 @@
-name = "your-project-name"
+name = "gak-cms-backend"
 main = "src/index.ts"
 compatibility_date = "2024-03-05"
 
 [build]
-command = "bun install && bunx prisma generate && bun build ./src/index.ts --target=bun"
+command = "bun install && bunx prisma generate --no-engine && bun build ./src/index.ts --target=bun"
+
+[build.upload]
+format = "service-worker"

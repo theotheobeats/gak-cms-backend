@@ -2,8 +2,8 @@
   "name": "gak-cms-backend",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "generate": "prisma generate",
-    "build": "bun build ./src/index.ts --target=bun",
+    "generate": "bunx prisma generate --no-engine",
+    "build": "bunx prisma generate --no-engine && bun build ./src/index.ts --target=bun",
     "env": "dotenv -e .dev.vars"
   },
   "dependencies": {
