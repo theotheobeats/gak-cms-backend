@@ -13,7 +13,6 @@
         "dest": "src/index.ts"
       }
     ],
-    "framework": "bun",
     "buildCommand": "bun run build",
     "installCommand": "bun install",
     "devCommand": "bun run dev"
