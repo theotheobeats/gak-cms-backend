@@ -1,0 +1,5 @@
+[build]
+command = "" # Optional build command if needed
+
+[deploy]
+main = "src/index.ts" # Specify the path to your main worker script
