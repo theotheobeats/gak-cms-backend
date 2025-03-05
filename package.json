@@ -2,7 +2,8 @@
   "name": "gak-cms-backend",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build ./src/index.ts --target=bun"
+    "generate": "npx prisma generate",
+    "build": "npx prisma generate && bun build ./src/index.ts --target=bun"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",

@@ -1,0 +1,6 @@
+name = "gak-cms-backend"
+main = "src/index.ts"
+compatibility_date = "2024-03-05"
+
+[build]
+command = "bun install && bun run prisma:generate && bun build"
