@@ -1,3 +1,4 @@
+import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { cors } from "hono/cors";
@@ -49,7 +50,11 @@ app.get("/", (c) => {
 app.route("/api/reflections", reflections);
 app.route("/api/albums", albums);
 
-export default {
-	port: 3001,
+// Start the server
+const port = 3001;
+console.log(`Server is running on port ${port}`);
+
+serve({
 	fetch: app.fetch,
-};
+	port
+});
