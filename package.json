@@ -3,7 +3,7 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "generate": "bunx prisma generate",
-    "build": "bun build ./src/index.ts --target=browser --format=esm --outdir dist"
+    "build": "bun build --output public"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
