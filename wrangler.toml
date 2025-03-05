@@ -1,5 +1,9 @@
 [build]
-command = "" # Optional build command if needed
+command = ""
 
 [deploy]
-main = "src/index.ts" # Specify the path to your main worker script
+name = "gak-cms-backend"
+main = "src/index.js" 
+
+compatibility_date = "2025-03-05"
+
