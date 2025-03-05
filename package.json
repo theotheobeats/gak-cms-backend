@@ -3,8 +3,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "generate": "bunx prisma generate",
-    "build": "bun build ./src/index.ts --outdir public --target bun",
-    "start": "bun run src/index.ts"
+    "build": "bun build ./src/index.ts --target bun --outdir dist",
+    "start": "bun run dist/index.js"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
