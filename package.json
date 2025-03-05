@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "generate": "prisma generate",
-    "build": "bun build ./src/index.ts --target=bun"
+    "build": "bun build ./src/index.ts --target=bun",
+    "env": "dotenv -e .dev.vars"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
