@@ -2,7 +2,7 @@
   "name": "gak-cms-backend",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "build": "bun run tsc"
+    "build": "bun build ./src/index.ts --target=bun"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
