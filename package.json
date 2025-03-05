@@ -3,10 +3,9 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "generate": "bunx prisma generate",
-    "build": "bunx prisma generate && bun build ./src/index.ts --target=browser --format=esm --outdir dist"
+    "build": "bun build ./src/index.ts --target=browser --format=esm --outdir dist"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.8",
     "@prisma/client": "^6.4.1",
     "@supabase/supabase-js": "^2.49.1",
     "bcryptjs": "^2.4.3",
