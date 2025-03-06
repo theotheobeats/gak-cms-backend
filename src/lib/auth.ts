@@ -12,5 +12,5 @@ export const auth = betterAuth({
 		enabled: true,
 	},
 	plugins: [openAPI()],
-	trustedOrigins: ["http://localhost:3000"],
+	trustedOrigins: [process.env.FRONTEND_DASHBOARD_URL as string],
 });
