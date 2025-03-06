@@ -1,6 +1,0 @@
-
-name = "gak-cms-backend"
-main = "src/index.js" 
-
-compatibility_date = "2025-03-05"
-

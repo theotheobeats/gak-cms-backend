@@ -1,4 +1,4 @@
-import { serve } from "@hono/node-server";
+import { handle } from "@hono/node-server/vercel";
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { cors } from "hono/cors";
@@ -51,10 +51,7 @@ app.route("/api/reflections", reflections);
 app.route("/api/albums", albums);
 
 // Start the server
-const port = 3001;
-console.log(`Server is running on port ${port}`);
+// const port = 3001;
+// console.log(`Server is running on port ${port}`);
 
-serve({
-	fetch: app.fetch,
-	port
-});
+export default handle(app);
