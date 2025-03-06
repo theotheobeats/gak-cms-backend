@@ -17,12 +17,14 @@ app.use(
 		origin: [
 			process.env.FRONTEND_URL,
 			process.env.FRONTEND_DASHBOARD_URL,
+			"http://localhost:3000",
+			"http://localhost:5173"
 		].filter(Boolean) as string[],
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"],
-		exposeHeaders: ["Content-Length"],
+		exposeHeaders: ["Content-Length", "Set-Cookie"],
 		maxAge: 600,
-		credentials: true, // Allows cookies
+		credentials: true,
 	})
 );
 
