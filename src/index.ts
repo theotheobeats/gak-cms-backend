@@ -14,7 +14,10 @@ const app = new Hono<{
 
 app.use(
 	cors({
-		origin: ["http://localhost:3000", "http://localhost:5173"],
+		origin: [
+			process.env.FRONTEND_URL,
+			process.env.FRONTEND_DASHBOARD_URL,
+		].filter(Boolean) as string[],
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"],
 		exposeHeaders: ["Content-Length"],

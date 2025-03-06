@@ -8,7 +8,10 @@ const reflections_1 = require("./api/reflections");
 const albums_1 = require("./api/albums");
 const app = new hono_1.Hono();
 app.use((0, cors_1.cors)({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+        process.env.FRONTEND_URL,
+        process.env.FRONTEND_DASHBOARD_URL,
+    ].filter(Boolean),
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
