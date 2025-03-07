@@ -1,7 +1,9 @@
 {
   "name": "gak-cms-backend",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "build": "tsc && prisma generate",
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
