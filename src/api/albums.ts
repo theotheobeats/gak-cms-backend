@@ -235,12 +235,20 @@ albums.put("/:id", requireAuth, async (c) => {
 	try {
 		const id = c.req.param("id");
 		const user = c.get("user");
-		const body = await c.req.json();
+		const formData = await c.req.formData();
+		
+		// Get album data from JSON
+		const albumDataJson = formData.get("albumData");
+		if (!albumDataJson) {
+			return c.json({ error: "Album data is required" }, 400);
+		}
+
+		const albumData = JSON.parse(albumDataJson.toString());
 
 		// Check ownership
 		const existing = await prisma.album.findUnique({
 			where: { id },
-			select: { uploadedById: true },
+			include: { images: true },
 		});
 
 		if (!existing) {
@@ -251,26 +259,102 @@ albums.put("/:id", requireAuth, async (c) => {
 			return c.json({ error: "Unauthorized" }, 403);
 		}
 
-		const validated = updateAlbumSchema.parse(body);
+		const validated = updateAlbumSchema.parse(albumData);
 
-		// Only include defined fields in the update
+		// Handle image deletions if imageIdsToDelete is provided
+		if (albumData.imageIdsToDelete?.length > 0) {
+			// Delete images from storage first
+			for (const imageId of albumData.imageIdsToDelete) {
+				const image = existing.images.find(img => img.id === imageId);
+				if (image) {
+					const filePath = image.url.split("/").pop();
+					if (filePath) {
+						await storageHelpers.deleteFile("albums", `${id}/${filePath}`);
+					}
+				}
+			}
+
+			// Delete images from database
+			await prisma.image.deleteMany({
+				where: {
+					id: { in: albumData.imageIdsToDelete },
+					albumId: id,
+				},
+			});
+		}
+
+		// Handle new image uploads
+		const newImages: any[] = [];
+		let i = 0;
+		while (formData.has(`image_${i}`)) {
+			const file = formData.get(`image_${i}`) as File;
+			const dbImageId = crypto.randomUUID();
+			const fileExt = file.name.split(".").pop();
+			const filePath = `${id}/${dbImageId}.${fileExt}`;
+
+			try {
+				const publicUrl = await storageHelpers.uploadFile(
+					"albums",
+					filePath,
+					file
+				);
+
+				const newImage = await prisma.image.create({
+					data: {
+						id: dbImageId,
+						url: publicUrl,
+						alt: file.name,
+						size: file.size,
+						albumId: id,
+						userId: user!.id,
+					},
+				});
+
+				newImages.push(newImage);
+			} catch (error) {
+				console.error(`Failed to upload file ${file.name}:`, error);
+				throw error;
+			}
+			i++;
+		}
+
+		// Update album metadata
 		const updateData: Prisma.AlbumUpdateInput = {
 			...(validated.name && { name: validated.name }),
 			...(validated.description && { description: validated.description }),
 			...(validated.date && { date: new Date(validated.date) }),
 		};
 
-		const album = await prisma.album.update({
+		const updatedAlbum = await prisma.album.update({
 			where: { id },
 			data: updateData,
 			include: {
 				images: true,
+				uploadedBy: {
+					select: {
+						id: true,
+						name: true,
+						image: true,
+					},
+				},
 			},
 		});
 
-		return c.json(album);
+		return c.json(updatedAlbum);
 	} catch (error) {
 		console.error("Update error:", error);
+		if (error instanceof z.ZodError) {
+			return c.json({
+				error: "Validation error",
+				details: error.errors,
+			}, 400);
+		}
+		if (error instanceof SyntaxError) {
+			return c.json({
+				error: "Invalid JSON data",
+				details: error.message,
+			}, 400);
+		}
 		return c.json({ error: "Failed to update album" }, 400);
 	}
 });
@@ -316,6 +400,70 @@ albums.delete("/:id", requireAuth, async (c) => {
 	} catch (error) {
 		console.error("Delete error:", error);
 		return c.json({ error: "Failed to delete album" }, 400);
+	}
+});
+
+/**
+ * Delete Single Image
+ * DELETE /api/albums/:albumId/images/:imageId
+ * Requires authentication
+ */
+albums.delete("/:albumId/images/:imageId", requireAuth, async (c) => {
+	try {
+		const albumId = c.req.param("albumId");
+		const imageId = c.req.param("imageId");
+		const user = c.get("user");
+
+		// Check if image exists and user has permission
+		const image = await prisma.image.findUnique({
+			where: { id: imageId },
+			include: {
+				album: {
+					select: {
+						uploadedById: true
+					}
+				}
+			}
+		});
+
+		if (!image) {
+			return c.json({ error: "Image not found" }, 404);
+		}
+
+		if (image.album.uploadedById !== user!.id) {
+			return c.json({ error: "Unauthorized" }, 403);
+		}
+
+		// Delete file from storage
+		const filePath = image.url.split("/").pop();
+		if (filePath) {
+			await storageHelpers.deleteFile("albums", `${albumId}/${filePath}`);
+		}
+
+		// Delete image from database
+		await prisma.image.delete({
+			where: { id: imageId }
+		});
+
+		// Return updated album data
+		const updatedAlbum = await prisma.album.findUnique({
+			where: { id: albumId },
+			include: {
+				images: true,
+				uploadedBy: {
+					select: {
+						id: true,
+						name: true,
+						image: true,
+					},
+				},
+			},
+		});
+
+		return c.json(updatedAlbum);
+	} catch (error) {
+		console.error("Delete image error:", error);
+		return c.json({ error: "Failed to delete image" }, 400);
 	}
 });
 

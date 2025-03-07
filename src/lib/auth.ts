@@ -12,14 +12,5 @@ export const auth = betterAuth({
 		enabled: true,
 	},
 	plugins: [openAPI()],
-	trustedOrigins: [
-		process.env.FRONTEND_URL,
-		process.env.FRONTEND_DASHBOARD_URL,
-		"http://localhost:3000",
-		"http://localhost:5173"
-	].filter(Boolean) as string[],
-	cookies: {
-		secure: process.env.NODE_ENV === 'production',
-		sameSite: "lax"
-	}
+	trustedOrigins: ["http://localhost:3000"],
 });

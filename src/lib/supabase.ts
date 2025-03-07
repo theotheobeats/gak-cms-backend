@@ -16,7 +16,7 @@ export const supabaseStorage = createClient(
 		auth: {
 			persistSession: false,
 			autoRefreshToken: false,
-		}
+		},
 	}
 );
 
@@ -26,7 +26,7 @@ export const storageHelpers = {
 	async ensureBucket(bucketName: string) {
 		// Check if bucket exists
 		const { data: buckets } = await supabaseStorage.storage.listBuckets();
-		const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+		const bucketExists = buckets?.some((bucket) => bucket.name === bucketName);
 
 		if (!bucketExists) {
 			// Create bucket if it doesn't exist
@@ -41,7 +41,7 @@ export const storageHelpers = {
 	// Generate unique file path
 	generateUniquePath(originalPath: string): string {
 		const timestamp = Date.now();
-		const lastDotIndex = originalPath.lastIndexOf('.');
+		const lastDotIndex = originalPath.lastIndexOf(".");
 		if (lastDotIndex === -1) {
 			return `${originalPath}_${timestamp}`;
 		}
@@ -61,15 +61,15 @@ export const storageHelpers = {
 		const { data, error } = await supabaseStorage.storage
 			.from(bucketName)
 			.upload(uniquePath, file, {
-				cacheControl: '3600',
-				upsert: true // Enable upsert as a fallback
+				cacheControl: "3600",
+				upsert: true, // Enable upsert as a fallback
 			});
 
 		if (error) throw error;
 
-		const { data: { publicUrl } } = supabaseStorage.storage
-			.from(bucketName)
-			.getPublicUrl(uniquePath);
+		const {
+			data: { publicUrl },
+		} = supabaseStorage.storage.from(bucketName).getPublicUrl(uniquePath);
 
 		return publicUrl;
 	},
@@ -81,5 +81,5 @@ export const storageHelpers = {
 			.remove([filePath]);
 
 		if (error) throw error;
-	}
+	},
 };

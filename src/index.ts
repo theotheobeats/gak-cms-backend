@@ -1,4 +1,3 @@
-import { handle } from "@hono/node-server/vercel";
 import { Hono } from "hono";
 import { auth } from "./lib/auth";
 import { cors } from "hono/cors";
@@ -14,17 +13,12 @@ const app = new Hono<{
 
 app.use(
 	cors({
-		origin: [
-			process.env.FRONTEND_URL,
-			process.env.FRONTEND_DASHBOARD_URL,
-			"http://localhost:3000",
-			"http://localhost:5173"
-		].filter(Boolean) as string[],
+		origin: "http://localhost:3000",
 		allowHeaders: ["Content-Type", "Authorization"],
 		allowMethods: ["POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"],
-		exposeHeaders: ["Content-Length", "Set-Cookie"],
+		exposeHeaders: ["Content-Length"],
 		maxAge: 600,
-		credentials: true,
+		credentials: true, // Allows cookies
 	})
 );
 
@@ -55,8 +49,7 @@ app.get("/", (c) => {
 app.route("/api/reflections", reflections);
 app.route("/api/albums", albums);
 
-// Start the server
-// const port = 3001;
-// console.log(`Server is running on port ${port}`);
-
-export default handle(app);
+export default {
+	port: 3001,
+	fetch: app.fetch,
+};
